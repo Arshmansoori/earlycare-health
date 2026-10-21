@@ -180,29 +180,36 @@ export interface CounterfactualSimulationRequest {
 }
 
 export interface CounterfactualSimulationResponse {
-  baseline_risks: Record<string, number>;
-  counterfactual_risks: Record<string, number>;
-  absolute_risk_reductions: Record<string, number>;
-  projected_impact_narrative: string;
+  baseline_risk_pcts: Record<string, number>;
+  counterfactual_risk_pcts: Record<string, number>;
+  risk_reductions_pct: Record<string, number>;
+  overall_improvement_summary: string;
   impactful_actions: string[];
+  // Compatibility aliases
+  baseline_risks?: Record<string, number>;
+  counterfactual_risks?: Record<string, number>;
+  absolute_risk_reductions?: Record<string, number>;
+  projected_impact_narrative?: string;
 }
 
 export interface DayMealPlan {
-  day_number: number;
-  day_name: string;
+  day: string;
+  title: string;
   breakfast: string;
   lunch: string;
-  snack: string;
+  evening_snack: string;
   dinner: string;
-  micronutrient_focus: string;
-  budget_inr: number;
+  key_micronutrient_target: string;
+  canteen_hostel_hack: string;
+  estimated_daily_extra_cost_inr: number;
 }
 
 export interface SevenDayDietBlueprint {
-  primary_target_condition: string;
-  weekly_estimated_budget_inr: number;
-  hostel_mess_hacks: string[];
-  iron_enhancement_pairing_rules: string[];
-  campus_sun_exposure_guideline: string;
-  daily_plans: DayMealPlan[];
+  student_diet_category: string;
+  primary_deficiencies_targeted: string[];
+  daily_schedule: DayMealPlan[];
+  absorption_golden_rules: string[];
+  banned_food_pairings: string[];
+  campus_sun_and_movement_routine: string;
+  estimated_weekly_budget_inr: number;
 }

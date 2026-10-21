@@ -60,7 +60,13 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
     );
   }
 
-  const activeDayPlan = blueprint.daily_plans.find((d) => d.day_number === selectedDay) || blueprint.daily_plans[0];
+  const budget = blueprint.estimated_weekly_budget_inr ?? 185;
+  const schedule = blueprint.daily_schedule || [];
+  const activeDayPlan = schedule[selectedDay - 1] || schedule[0];
+
+  const messHacks = (blueprint.daily_schedule && blueprint.daily_schedule.map((d) => d.canteen_hostel_hack).filter(Boolean).slice(0, 4)) || [];
+  const absorptionRules = blueprint.absorption_golden_rules || [];
+  const sunRoutine = blueprint.campus_sun_and_movement_routine || "Expose uncovered forearms to natural midday sun (11 AM - 1 PM) for 15-20 mins daily without sunscreen.";
 
   return (
     <div className="bg-white rounded-3xl border border-[#E9E4D8] p-6 sm:p-8 shadow-warm space-y-6">
@@ -79,7 +85,7 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
             7-Day Hostel Budget Meal &amp; Absorption Protocol
           </h3>
           <p className="text-xs text-[#857F76] mt-0.5">
-            Designed specifically for Indian student dorms and college messes — high bio-availability, low cost.
+            Targeting: <span className="font-bold text-[#1F2937] capitalize">{blueprint.student_diet_category || "Student Diet"}</span> &bull; Focus: {blueprint.primary_deficiencies_targeted?.join(", ") || "General Vitality"}
           </p>
         </div>
 
@@ -88,7 +94,7 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
             <span className="text-[10px] uppercase font-bold text-[#857F76] block">Est. Student Budget</span>
             <span className="text-lg font-black text-emerald-800 flex items-center justify-end">
               <IndianRupee className="w-4 h-4 mr-0.5" />
-              {blueprint.weekly_estimated_budget_inr}
+              {budget}
               <span className="text-xs font-medium text-[#857F76] ml-1">/wk</span>
             </span>
           </div>
@@ -104,7 +110,7 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
             Hostel Mess Practical Hacks
           </h4>
           <ul className="space-y-1.5 text-xs text-[#1F2937]">
-            {blueprint.hostel_mess_hacks.map((hack, idx) => (
+            {messHacks.map((hack, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
                 <span>{hack}</span>
@@ -121,10 +127,10 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
           </h4>
           <p className="text-xs text-[#1F2937] bg-white p-2.5 rounded-xl border border-[#E9E4D8]">
             <span className="font-bold text-amber-900">Campus Sun Schedule: </span>
-            {blueprint.campus_sun_exposure_guideline}
+            {sunRoutine}
           </p>
           <ul className="space-y-1.5 text-xs text-[#1F2937]">
-            {blueprint.iron_enhancement_pairing_rules.map((rule, idx) => (
+            {absorptionRules.map((rule, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <ChevronRight className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <span>{rule}</span>
@@ -137,18 +143,18 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
       {/* 7-Day Tabs */}
       <div className="space-y-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {blueprint.daily_plans.map((day) => (
+          {schedule.map((dayPlan, idx) => (
             <button
-              key={day.day_number}
+              key={idx + 1}
               type="button"
-              onClick={() => setSelectedDay(day.day_number)}
+              onClick={() => setSelectedDay(idx + 1)}
               className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                selectedDay === day.day_number
+                selectedDay === idx + 1
                   ? "bg-[#1F2937] text-white shadow-sm"
                   : "bg-[#FAF8F5] text-[#857F76] hover:bg-stone-100 border border-[#E9E4D8]"
               }`}
             >
-              Day {day.day_number}: {day.day_name.slice(0, 3)}
+              Day {idx + 1}: {dayPlan.day || `Day ${idx + 1}`}
             </button>
           ))}
         </div>
@@ -159,12 +165,14 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
             <div className="flex items-center justify-between border-b border-[#E9E4D8] pb-3">
               <div>
                 <h5 className="text-sm font-bold text-[#1F2937]">
-                  {activeDayPlan.day_name} &bull; Focus: {activeDayPlan.micronutrient_focus}
+                  {activeDayPlan.day}: {activeDayPlan.title} &bull; Focus: {activeDayPlan.key_micronutrient_target}
                 </h5>
-                <span className="text-[11px] text-[#857F76]">Daily estimated grocery budget add-on</span>
+                <span className="text-[11px] text-[#857F76]">
+                  Hostel tip: {activeDayPlan.canteen_hostel_hack}
+                </span>
               </div>
               <span className="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                ₹{activeDayPlan.budget_inr} / day
+                ₹{activeDayPlan.estimated_daily_extra_cost_inr} / day
               </span>
             </div>
 
@@ -184,7 +192,7 @@ export function CampusDietBlueprint({ intakeData }: CampusDietBlueprintProps) {
               {/* Snack */}
               <div className="p-3 rounded-xl bg-white border border-[#E9E4D8] space-y-1">
                 <span className="text-[10px] font-bold text-[#857F76] uppercase">4 PM Dorm Snack</span>
-                <p className="text-xs font-medium text-[#1F2937] leading-snug">{activeDayPlan.snack}</p>
+                <p className="text-xs font-medium text-[#1F2937] leading-snug">{activeDayPlan.evening_snack}</p>
               </div>
 
               {/* Dinner */}

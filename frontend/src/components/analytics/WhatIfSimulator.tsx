@@ -60,13 +60,25 @@ export function WhatIfSimulator({
     };
   }, [mods, baselineIntake]);
 
-  const anemiaCur = simResult ? simResult.counterfactual_risks.anemia : initialAnemiaRisk;
-  const prediabCur = simResult ? simResult.counterfactual_risks.prediabetes : initialPrediabetesRisk;
-  const microCur = simResult ? simResult.counterfactual_risks.micronutrients : initialMicroRisk;
+  const getCounterfactual = (key: string, fallback: number) => {
+    if (!simResult) return fallback;
+    const cf = simResult.counterfactual_risk_pcts || simResult.counterfactual_risks;
+    return cf && cf[key] !== undefined ? cf[key] : fallback;
+  };
 
-  const anemiaDrop = simResult ? simResult.absolute_risk_reductions.anemia : 0;
-  const prediabDrop = simResult ? simResult.absolute_risk_reductions.prediabetes : 0;
-  const microDrop = simResult ? simResult.absolute_risk_reductions.micronutrients : 0;
+  const getReduction = (key: string) => {
+    if (!simResult) return 0;
+    const rr = simResult.risk_reductions_pct || simResult.absolute_risk_reductions;
+    return rr && rr[key] !== undefined ? rr[key] : 0;
+  };
+
+  const anemiaCur = getCounterfactual("anemia", initialAnemiaRisk);
+  const prediabCur = getCounterfactual("prediabetes", initialPrediabetesRisk);
+  const microCur = getCounterfactual("micronutrients", initialMicroRisk);
+
+  const anemiaDrop = getReduction("anemia");
+  const prediabDrop = getReduction("prediabetes");
+  const microDrop = getReduction("micronutrients");
 
   return (
     <div className="bg-white rounded-3xl border border-[#E9E4D8] p-6 sm:p-8 shadow-warm space-y-6">
@@ -316,12 +328,12 @@ export function WhatIfSimulator({
       </div>
 
       {/* Impact Narrative */}
-      {simResult && simResult.projected_impact_narrative && (
+      {simResult && (simResult.overall_improvement_summary || simResult.projected_impact_narrative) && (
         <div className="p-4 rounded-2xl bg-stone-50 border border-[#E9E4D8] text-xs text-[#1F2937] leading-relaxed flex items-start gap-2.5">
           <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
           <div>
             <span className="font-bold">ML Simulation Insight: </span>
-            {simResult.projected_impact_narrative}
+            {simResult.overall_improvement_summary || simResult.projected_impact_narrative}
           </div>
         </div>
       )}

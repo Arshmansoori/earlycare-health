@@ -2,6 +2,10 @@
   RewriteEngine On
   RewriteBase /
 
+  # Do NOT rewrite static assets or Next.js internal chunks
+  RewriteRule ^_next/ - [L]
+  RewriteRule \.(css|js|png|jpg|jpeg|gif|ico|svg|json|txt|woff|woff2)$ - [L]
+
   # Serve existing file or directory directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d

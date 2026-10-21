@@ -32,6 +32,7 @@ export interface StudentIntakeData {
   sunscreen_regular_use: boolean;
   physical_activity_level: ActivityLevel;
   sugary_drinks_weekly_count: number;
+  sleep_hours_per_night?: number | null;
   b12_supplementation?: boolean;
   d3_supplementation?: boolean;
 
@@ -56,6 +57,10 @@ export interface StudentIntakeData {
 
   // Red-flag Safety Intercept
   chest_pain_or_syncope_reported: boolean;
+
+  // Non-Invasive Optical Biomarker (Optional Step 3 scan)
+  camera_pallor_score?: number | null;
+  camera_erythema_index?: number | null;
 }
 
 export interface FactorAttributionItem {
@@ -157,4 +162,47 @@ export interface ExplainResponse {
   screening_id?: string;
   timestamp_utc: string;
   explanations: Record<string, ConditionExplanation>;
+}
+
+export interface CounterfactualModifications {
+  sleep_hours?: number | null;
+  sugary_drinks_weekly_count?: number | null;
+  physical_activity_level?: ActivityLevel | null;
+  add_post_meal_walk: boolean;
+  eliminate_post_meal_tea: boolean;
+  weekly_sunlight_hours?: SunExposureLevel | null;
+  iron_vitamin_c_pairing: boolean;
+}
+
+export interface CounterfactualSimulationRequest {
+  baseline_intake: StudentIntakeData;
+  modifications: CounterfactualModifications;
+}
+
+export interface CounterfactualSimulationResponse {
+  baseline_risks: Record<string, number>;
+  counterfactual_risks: Record<string, number>;
+  absolute_risk_reductions: Record<string, number>;
+  projected_impact_narrative: string;
+  impactful_actions: string[];
+}
+
+export interface DayMealPlan {
+  day_number: number;
+  day_name: string;
+  breakfast: string;
+  lunch: string;
+  snack: string;
+  dinner: string;
+  micronutrient_focus: string;
+  budget_inr: number;
+}
+
+export interface SevenDayDietBlueprint {
+  primary_target_condition: string;
+  weekly_estimated_budget_inr: number;
+  hostel_mess_hacks: string[];
+  iron_enhancement_pairing_rules: string[];
+  campus_sun_exposure_guideline: string;
+  daily_plans: DayMealPlan[];
 }

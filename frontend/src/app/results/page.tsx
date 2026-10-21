@@ -22,13 +22,18 @@ import { Badge } from "@/components/ui/Badge";
 import { RiskGauge } from "@/components/analytics/RiskGauge";
 import { RiskRadarChart } from "@/components/analytics/RiskRadarChart";
 import { FactorAttributionCard } from "@/components/analytics/FactorAttributionCard";
+import { WhatIfSimulator } from "@/components/analytics/WhatIfSimulator";
+import { CampusDietBlueprint } from "@/components/analytics/CampusDietBlueprint";
 import { SbarReportView } from "@/components/clinical/SbarReportView";
 import { SbarPrintTemplate } from "@/components/clinical/SbarPrintTemplate";
 import { DisclaimerBanner } from "@/components/clinical/DisclaimerBanner";
+import { StudentIntakeData } from "@/lib/types";
+import { initialIntakeState } from "@/lib/calculations";
 
 export default function ResultsPage() {
   const router = useRouter();
   const [result, setResult] = useState<ScreeningResult | null>(null);
+  const [intakeData, setIntakeData] = useState<StudentIntakeData | null>(null);
   const [isSbarModalOpen, setIsSbarModalOpen] = useState(false);
 
   useEffect(() => {
@@ -36,6 +41,10 @@ export default function ResultsPage() {
       const stored = sessionStorage.getItem("earlycare_result");
       if (stored) {
         setResult(JSON.parse(stored));
+      }
+      const storedIntake = sessionStorage.getItem("earlycare_intake");
+      if (storedIntake) {
+        setIntakeData(JSON.parse(storedIntake));
       }
     } catch {
       // Ignore
@@ -324,6 +333,21 @@ export default function ResultsPage() {
             />
           )}
         </div>
+      </section>
+
+      {/* "What-If" Counterfactual Health Simulator */}
+      <section className="no-print">
+        <WhatIfSimulator
+          baselineIntake={intakeData || initialIntakeState}
+          initialAnemiaRisk={conditions.anemia?.calibrated_risk_pct || 0}
+          initialPrediabetesRisk={conditions.prediabetes?.calibrated_risk_pct || 0}
+          initialMicroRisk={conditions.micronutrients?.calibrated_risk_pct || 0}
+        />
+      </section>
+
+      {/* 7-Day Campus Budget Diet & Habit Blueprint */}
+      <section className="no-print">
+        <CampusDietBlueprint intakeData={intakeData || initialIntakeState} />
       </section>
 
       {/* SBAR Clinical Handover Callout Card */}

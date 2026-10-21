@@ -149,6 +149,11 @@ class StudentIntakeRequest(BaseModel):
     b12_supplementation: bool = Field(default=False)
     d3_supplementation: bool = Field(default=False)
 
+    # Non-Invasive Camera Biomarkers (Nail-bed / Conjunctiva Pallor)
+    camera_pallor_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Optical pallor score (0=vascular, 1=severe pallor)")
+    camera_erythema_index: Optional[float] = Field(default=None, description="Calculated Erythema Index R / (R + G + B)")
+    camera_biomarker_region: Optional[str] = Field(default="nailbed", description="'nailbed' or 'conjunctiva'")
+
     @model_validator(mode="before")
     @classmethod
     def flatten_nested_structures(cls, data: Any) -> Any:
@@ -304,3 +309,49 @@ class HealthStatusResponse(BaseModel):
     version: str
     calibrated_models: List[str]
     samd_status: str
+
+
+class CounterfactualModification(BaseModel):
+    sleep_hours: Optional[float] = None
+    daily_caffeine_cups: Optional[int] = None
+    sugary_drinks_weekly_count: Optional[int] = None
+    physical_activity_level: Optional[str] = None
+    eliminate_post_meal_tea: bool = False
+    add_post_meal_walk: bool = False
+    weekly_sunlight_hours: Optional[str] = None
+    iron_vitamin_c_pairing: bool = False
+
+
+class CounterfactualSimulationRequest(BaseModel):
+    baseline_intake: StudentIntakeRequest
+    modifications: CounterfactualModification
+
+
+class CounterfactualSimulationResponse(BaseModel):
+    baseline_risk_pcts: Dict[str, float]
+    counterfactual_risk_pcts: Dict[str, float]
+    risk_reductions_pct: Dict[str, float]
+    overall_improvement_summary: str
+    impactful_actions: List[str]
+
+
+class DayMealPlan(BaseModel):
+    day: str
+    title: str
+    breakfast: str
+    lunch: str
+    evening_snack: str
+    dinner: str
+    key_micronutrient_target: str
+    canteen_hostel_hack: str
+    estimated_daily_extra_cost_inr: int
+
+
+class SevenDayDietBlueprint(BaseModel):
+    student_diet_category: str
+    primary_deficiencies_targeted: List[str]
+    daily_schedule: List[DayMealPlan]
+    absorption_golden_rules: List[str]
+    banned_food_pairings: List[str]
+    campus_sun_and_movement_routine: str
+    estimated_weekly_budget_inr: int

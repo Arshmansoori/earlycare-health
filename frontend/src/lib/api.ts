@@ -1,5 +1,13 @@
 // frontend/src/lib/api.ts
-import { StudentIntakeData, ScreeningResult, ExplainResponse, SbarReportPayload } from "./types";
+import {
+  StudentIntakeData,
+  ScreeningResult,
+  ExplainResponse,
+  SbarReportPayload,
+  CounterfactualSimulationRequest,
+  CounterfactualSimulationResponse,
+  SevenDayDietBlueprint,
+} from "./types";
 
 let cachedApiUrl: string | null = null;
 
@@ -147,6 +155,53 @@ export async function checkBackendHealth(): Promise<{ status: string; service: s
 
   if (!response.ok) {
     throw new Error(`Health check returned status ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function simulateCounterfactual(
+  req: CounterfactualSimulationRequest
+): Promise<CounterfactualSimulationResponse> {
+  const baseUrl = await getApiBaseUrl();
+  const sanitizedBaseline = sanitizePayload(req.baseline_intake);
+  const response = await fetch(`${baseUrl}/api/simulate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      baseline_intake: sanitizedBaseline,
+      modifications: req.modifications,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Counterfactual simulation failed (${response.status}): ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function fetchDietBlueprint(
+  intake: StudentIntakeData
+): Promise<SevenDayDietBlueprint> {
+  const baseUrl = await getApiBaseUrl();
+  const sanitized = sanitizePayload(intake);
+  const response = await fetch(`${baseUrl}/api/diet-blueprint`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(sanitized),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Diet blueprint generation failed (${response.status}): ${errorBody}`);
   }
 
   return response.json();

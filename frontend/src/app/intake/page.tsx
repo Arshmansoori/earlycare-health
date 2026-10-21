@@ -37,6 +37,7 @@ const SAMPLE_STUDENT_PROFILE: StudentIntakeData = {
   sunscreen_regular_use: true,
   physical_activity_level: "light",
   sugary_drinks_weekly_count: 1,
+  sleep_hours_per_night: 6.0,
   b12_supplementation: false,
   d3_supplementation: false,
   fatigue_severity_score: 8,

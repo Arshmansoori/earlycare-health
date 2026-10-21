@@ -125,6 +125,7 @@ export const initialIntakeState: StudentIntakeData = {
   sunscreen_regular_use: false,
   physical_activity_level: "moderate",
   sugary_drinks_weekly_count: 1,
+  sleep_hours_per_night: 7.0,
   b12_supplementation: false,
   d3_supplementation: false,
 
@@ -149,6 +150,10 @@ export const initialIntakeState: StudentIntakeData = {
 
   // Red-flag Safety Intercept
   chest_pain_or_syncope_reported: false,
+
+  // Non-Invasive Optical Biomarker
+  camera_pallor_score: null,
+  camera_erythema_index: null,
 };
 
 export function validateStep(step: number, data: StudentIntakeData): { isValid: boolean; error?: string } {

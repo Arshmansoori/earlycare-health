@@ -74,6 +74,11 @@ METADATA_MAP: Dict[str, Dict[str, str]] = {
         "label": "Campus Clinic Hemoglobin",
         "explanation": "Objective point-of-care laboratory measurement validating screening probability.",
         "rationale": "WHO threshold: Hb <12.0 g/dL (females) or <13.0 g/dL (males) defines anaemia."
+    },
+    "camera_pallor_biomarker": {
+        "label": "Camera Nail-Bed/Conjunctival Pallor",
+        "explanation": "Optical Erythema Index indicates reduced capillary hemoglobin bed saturation.",
+        "rationale": "Non-invasive optical pallor analysis correlates with microvascular hemoglobin concentration."
     }
 }
 
@@ -204,6 +209,18 @@ def extract_anemia_log_odds(intake: StudentIntakeRequest) -> Dict[str, float]:
             else:
                 w_hb = -1.50
         attribs["lab_hemoglobin_anchor"] = w_hb
+
+    # 13. Non-Invasive Camera Optical Pallor Biomarker
+    if intake.camera_pallor_score is not None:
+        p_score = intake.camera_pallor_score
+        if p_score >= 0.70:
+            attribs["camera_pallor_biomarker"] = 1.10
+        elif p_score >= 0.50:
+            attribs["camera_pallor_biomarker"] = 0.60
+        elif p_score <= 0.25:
+            attribs["camera_pallor_biomarker"] = -0.40
+        else:
+            attribs["camera_pallor_biomarker"] = 0.0
 
     return attribs
 

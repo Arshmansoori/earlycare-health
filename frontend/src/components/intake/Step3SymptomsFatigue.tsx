@@ -6,6 +6,7 @@ import { BatteryCharging, Zap, Wind, EyeOff, Snowflake, Sparkles } from "lucide-
 import { StudentIntakeData } from "@/lib/types";
 import { Slider } from "../ui/Slider";
 import { ToggleGroup } from "../ui/ToggleGroup";
+import { PallorScanner } from "./PallorScanner";
 
 interface Step3Props {
   data: StudentIntakeData;
@@ -149,6 +150,26 @@ export const Step3SymptomsFatigue: React.FC<Step3Props> = ({ data, onChange }) =
           value={data.brittle_nails_or_hair_loss}
           onChange={(val) => onChange({ brittle_nails_or_hair_loss: val })}
           columns={2}
+        />
+      </div>
+
+      {/* Non-Invasive Camera Biomarker: Nail-bed / Conjunctiva Pallor Scanner */}
+      <div className="pt-2">
+        <PallorScanner
+          currentPallorScore={data.camera_pallor_score}
+          currentErythemaIndex={data.camera_erythema_index}
+          onAnalysisComplete={(score, erythemaIndex) => {
+            onChange({
+              camera_pallor_score: score,
+              camera_erythema_index: erythemaIndex,
+            });
+          }}
+          onClear={() => {
+            onChange({
+              camera_pallor_score: null,
+              camera_erythema_index: null,
+            });
+          }}
         />
       </div>
     </div>

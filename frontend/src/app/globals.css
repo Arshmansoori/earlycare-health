@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FAF8F5;
+  --foreground: #1F2937;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom transitions and scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D1C3;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A8A093;
+}
+
+/* Screen vs Print utility visibility */
+.print-only {
+  display: none !important;
+}
+
+/* ========================================================================= */
+/* Print-Optimized Ink-Saving CSS (@media print) for Doctor SBAR Clinical Handover */
+/* ========================================================================= */
+@media print {
+  @page {
+    size: letter;
+    margin: 15mm;
+  }
+
+  /* Hide interactive controls, nav, buttons, footers, disclaimers not meant for slip */
+  nav,
+  header,
+  footer,
+  .no-print,
+  button,
+  .interactive-controls {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Force pure white background and crisp dark text for ink-saving print */
+  body,
+  main,
+  .print-container {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Expand card containers, remove shadows, add clean high-contrast borders */
+  .card,
+  .stone-container,
+  .print-card {
+    border: 1px solid #d1d5db !important;
+    box-shadow: none !important;
+    border-radius: 4px !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 12pt !important;
+    padding: 10pt !important;
+  }
+
+  /* Table styling */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #e5e7eb !important;
+    padding: 4pt 6pt !important;
+    text-align: left !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Header and Doctor Signature Section */
+  .print-header {
+    display: block !important;
+    border-bottom: 2px solid #000000 !important;
+    padding-bottom: 8pt !important;
+    margin-bottom: 12pt !important;
+  }
+
+  .print-doctor-signoff {
+    display: block !important;
+    margin-top: 24pt !important;
+    page-break-inside: avoid !important;
+    border-top: 1px dashed #6b7280 !important;
+    padding-top: 12pt !important;
+  }
+}

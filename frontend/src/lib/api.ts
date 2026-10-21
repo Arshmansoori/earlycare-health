@@ -1,7 +1,40 @@
 // frontend/src/lib/api.ts
 import { StudentIntakeData, ScreeningResult, ExplainResponse, SbarReportPayload } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+let cachedApiUrl: string | null = null;
+
+export async function getApiBaseUrl(): Promise<string> {
+  if (cachedApiUrl) return cachedApiUrl;
+
+  if (typeof window !== "undefined") {
+    // 1. Check if user configured in localStorage or global
+    const local = localStorage.getItem("earlycare_api_url");
+    if (local && local.trim()) {
+      const clean = local.trim().replace(/\/+$/, "");
+      cachedApiUrl = clean;
+      return clean;
+    }
+
+    // 2. Try loading dynamic runtime config.json (for easy Hostinger configuration)
+    try {
+      const res = await fetch("/config.json", { cache: "no-store" });
+      if (res.ok) {
+        const cfg = await res.json();
+        if (cfg.apiUrl && typeof cfg.apiUrl === "string" && cfg.apiUrl.trim()) {
+          const clean = cfg.apiUrl.trim().replace(/\/+$/, "");
+          cachedApiUrl = clean;
+          return clean;
+        }
+      }
+    } catch {
+      // Fallback to build-time env
+    }
+  }
+
+  const fallback = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+  cachedApiUrl = fallback;
+  return fallback;
+}
 
 /**
  * Clean intake data prior to submission, removing any empty strings or invalid nulls
@@ -37,8 +70,9 @@ function sanitizePayload(data: StudentIntakeData): Record<string, unknown> {
 }
 
 export async function screenStudent(data: StudentIntakeData): Promise<ScreeningResult> {
+  const baseUrl = await getApiBaseUrl();
   const sanitized = sanitizePayload(data);
-  const response = await fetch(`${API_BASE_URL}/api/screen`, {
+  const response = await fetch(`${baseUrl}/api/screen`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -65,8 +99,9 @@ export async function screenStudent(data: StudentIntakeData): Promise<ScreeningR
 }
 
 export async function explainConditions(data: StudentIntakeData): Promise<ExplainResponse> {
+  const baseUrl = await getApiBaseUrl();
   const sanitized = sanitizePayload(data);
-  const response = await fetch(`${API_BASE_URL}/api/explain`, {
+  const response = await fetch(`${baseUrl}/api/explain`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -84,8 +119,9 @@ export async function explainConditions(data: StudentIntakeData): Promise<Explai
 }
 
 export async function exportSbarReport(data: StudentIntakeData): Promise<SbarReportPayload> {
+  const baseUrl = await getApiBaseUrl();
   const sanitized = sanitizePayload(data);
-  const response = await fetch(`${API_BASE_URL}/api/export-sbar`, {
+  const response = await fetch(`${baseUrl}/api/export-sbar`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -103,7 +139,8 @@ export async function exportSbarReport(data: StudentIntakeData): Promise<SbarRep
 }
 
 export async function checkBackendHealth(): Promise<{ status: string; service: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/health`, {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/health`, {
     method: "GET",
     headers: { Accept: "application/json" },
   });

@@ -15,13 +15,33 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: { client_id: string; callback: (res: { credential: string }) => void }) => void;
+          initialize: (config: {
+            client_id: string;
+            callback: (res: { credential: string }) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+            [key: string]: unknown;
+          }) => void;
           renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+          prompt: (
+            callback?: (notification: {
+              isNotDisplayed: () => boolean;
+              getNotDisplayedReason: () => string;
+              isSkippedMoment: () => boolean;
+              getSkippedReason: () => string;
+              isDismissedMoment: () => boolean;
+              getDismissedReason: () => string;
+            }) => void
+          ) => void;
         };
       };
     };
   }
 }
+
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "21702447876-708iuvnamlqn1bppid58nq1u7fq9beep.apps.googleusercontent.com";
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { loginWithGoogleCredential, loginWithDemoStudent } = useAuth();
@@ -32,45 +52,58 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || typeof window === "undefined") return;
 
-    // Load Google Identity Services script dynamically if client id is configured
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (clientId && typeof window !== "undefined") {
-      const script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        if (window.google?.accounts?.id) {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: async (response) => {
+    const setupGoogleSignIn = () => {
+      if (!window.google?.accounts?.id) return;
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: async (response) => {
+            if (response.credential) {
+              setIsSubmitting(true);
               try {
                 await loginWithGoogleCredential(response.credential);
                 onClose();
               } catch (err: unknown) {
                 const msg = err instanceof Error ? err.message : "Google authentication failed";
                 setErrorMessage(msg);
+              } finally {
+                setIsSubmitting(false);
               }
-            },
+            }
+          },
+          auto_select: false,
+        });
+
+        const target = document.getElementById("google-button-container");
+        if (target) {
+          target.innerHTML = "";
+          window.google.accounts.id.renderButton(target, {
+            theme: "outline",
+            size: "large",
+            text: "signin_with",
+            shape: "pill",
+            width: 320,
+            logo_alignment: "left",
           });
-          const target = document.getElementById("google-button-container");
-          if (target) {
-            window.google.accounts.id.renderButton(target, {
-              theme: "outline",
-              size: "large",
-              text: "continue_with",
-              shape: "pill",
-              width: 320,
-            });
-          }
         }
-      };
+      } catch (e) {
+        console.warn("Google button render:", e);
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      setupGoogleSignIn();
+    } else {
+      const script = document.createElement("script");
+      script.id = "google-gsi-client";
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = setupGoogleSignIn;
       document.body.appendChild(script);
-      return () => {
-        document.body.removeChild(script);
-      };
     }
   }, [isOpen, loginWithGoogleCredential, onClose]);
 

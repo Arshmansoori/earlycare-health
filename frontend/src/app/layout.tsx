@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ShieldCheck, Activity } from "lucide-react";
 import { AuthProvider } from "@/context/AuthContext";
 import { Navbar } from "@/components/layout/Navbar";
+import { GoogleOneTap } from "@/components/auth/GoogleOneTap";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,6 +21,9 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col bg-[#FAF8F5] text-[#1F2937] antialiased">
         <AuthProvider>
+          {/* Automatic Modern Google One-Tap Popup for Students */}
+          <GoogleOneTap />
+
           {/* Navigation Bar */}
           <Navbar />
 

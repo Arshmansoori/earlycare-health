@@ -213,3 +213,24 @@ export interface SevenDayDietBlueprint {
   campus_sun_and_movement_routine: string;
   estimated_weekly_budget_inr: number;
 }
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  created_at: string;
+  last_login: string;
+}
+
+export interface SavedScreeningSummary {
+  id: string;
+  screening_id: string;
+  created_at: string;
+  overall_risk_tier: RiskTier;
+  highest_risk_condition: string;
+  anemia_risk_pct: number;
+  prediabetes_risk_pct: number;
+  micronutrients_risk_pct: number;
+  urgent_consult_flag: boolean;
+}

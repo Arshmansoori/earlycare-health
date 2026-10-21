@@ -7,6 +7,8 @@ import {
   CounterfactualSimulationRequest,
   CounterfactualSimulationResponse,
   SevenDayDietBlueprint,
+  UserProfile,
+  SavedScreeningSummary,
 } from "./types";
 
 let cachedApiUrl: string | null = null;
@@ -80,12 +82,22 @@ function sanitizePayload(data: StudentIntakeData): Record<string, unknown> {
 export async function screenStudent(data: StudentIntakeData): Promise<ScreeningResult> {
   const baseUrl = await getApiBaseUrl();
   const sanitized = sanitizePayload(data);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("earlycare_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const response = await fetch(`${baseUrl}/api/screen`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(sanitized),
   });
 
@@ -205,4 +217,133 @@ export async function fetchDietBlueprint(
   }
 
   return response.json();
+}
+
+// =============================================================================
+// Authentication & Screening History API
+// =============================================================================
+
+export async function loginWithGoogleAuth(payload: {
+  credential?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}): Promise<{ access_token: string; token_type: string; user: UserProfile }> {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/auth/google`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Authentication failed (${response.status}): ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function fetchCurrentUser(token: string): Promise<UserProfile> {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/auth/me`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load profile (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function saveScreeningReport(
+  token: string,
+  screeningId: string,
+  intakeData: StudentIntakeData,
+  resultData: ScreeningResult
+): Promise<{ status: string; screening_id: string; record_id: string }> {
+  const baseUrl = await getApiBaseUrl();
+  const sanitizedIntake = sanitizePayload(intakeData);
+  const response = await fetch(`${baseUrl}/api/results/save`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      screening_id: screeningId,
+      intake_data: sanitizedIntake,
+      result_data: resultData,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to save screening report (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function fetchScreeningHistory(token: string): Promise<SavedScreeningSummary[]> {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/results/history`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch history (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function fetchSavedScreeningDetail(
+  token: string,
+  screeningId: string
+): Promise<{
+  screening_id: string;
+  created_at: string;
+  intake_data: StudentIntakeData;
+  result_data: ScreeningResult;
+}> {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/results/${screeningId}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load screening detail (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function deleteSavedScreening(token: string, screeningId: string): Promise<boolean> {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/results/${screeningId}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.ok;
 }

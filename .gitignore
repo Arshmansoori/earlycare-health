@@ -60,3 +60,5 @@ setup_git_commits.py
 *.zip
 .agents/
 a.pdf
+*.db
+*.sqlite*

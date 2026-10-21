@@ -29,12 +29,18 @@ import { SbarPrintTemplate } from "@/components/clinical/SbarPrintTemplate";
 import { DisclaimerBanner } from "@/components/clinical/DisclaimerBanner";
 import { StudentIntakeData } from "@/lib/types";
 import { initialIntakeState } from "@/lib/calculations";
+import { useAuth } from "@/context/AuthContext";
+import { saveScreeningReport } from "@/lib/api";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export default function ResultsPage() {
   const router = useRouter();
+  const { user, token } = useAuth();
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [intakeData, setIntakeData] = useState<StudentIntakeData | null>(null);
   const [isSbarModalOpen, setIsSbarModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSavedManual, setIsSavedManual] = useState(false);
 
   useEffect(() => {
     try {
@@ -50,6 +56,14 @@ export default function ResultsPage() {
       // Ignore
     }
   }, []);
+
+  useEffect(() => {
+    if (token && result && intakeData && !isSavedManual) {
+      saveScreeningReport(token, result.screening_id, intakeData, result)
+        .then(() => setIsSavedManual(true))
+        .catch(() => {});
+    }
+  }, [token, result, intakeData, isSavedManual]);
 
   const handlePrint = () => {
     window.print();
@@ -154,6 +168,44 @@ export default function ResultsPage() {
                   "Severe chronic fatigue score combined with frequent postural dizziness warrants in-person clinical workup to rule out severe orthostasis or critical anaemia."}
               </p>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* User Account Save Status Banner */}
+      <div className="no-print">
+        {user ? (
+          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>
+                <strong>Saved to Account:</strong> This report is securely stored in{" "}
+                <span className="font-bold">{user.name}&apos;s</span> student health timeline.
+              </span>
+            </div>
+            <Link href="/history">
+              <Button size="sm" variant="outline" className="text-xs bg-white text-emerald-900 border-emerald-300">
+                View Past Timeline
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-[#FDFBF7] border border-[#E9E4D8] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-[#1F2937]">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <span>
+                <strong>Save to Account:</strong> Sign in with Google to preserve this screening report and track changes over time.
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="text-xs bg-white border-[#D8D2C5]"
+            >
+              Sign In with Google to Save
+            </Button>
           </div>
         )}
       </div>
@@ -404,6 +456,9 @@ export default function ResultsPage() {
 
       {/* Dedicated Print-Only Template (for window.print()) */}
       <SbarPrintTemplate report={sbar_report} vitals={calculated_vitals} />
+
+      {/* Auth Modal for Saving Reports */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

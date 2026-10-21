@@ -355,3 +355,44 @@ class SevenDayDietBlueprint(BaseModel):
     banned_food_pairings: List[str]
     campus_sun_and_movement_routine: str
     estimated_weekly_budget_inr: int
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    picture: Optional[str] = None
+
+
+class UserProfileResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    picture: str
+    created_at: str
+    last_login: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "Bearer"
+    user: UserProfileResponse
+
+
+class SaveScreeningRequest(BaseModel):
+    screening_id: str
+    intake_data: Dict[str, Any]
+    result_data: Dict[str, Any]
+
+
+class SavedScreeningSummary(BaseModel):
+    id: str
+    screening_id: str
+    created_at: str
+    overall_risk_tier: str
+    highest_risk_condition: str
+    anemia_risk_pct: float
+    prediabetes_risk_pct: float
+    micronutrients_risk_pct: float
+    urgent_consult_flag: bool
+

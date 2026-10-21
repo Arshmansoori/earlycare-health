@@ -1,11 +1,13 @@
 """EarlyCare FastAPI Application Entrypoint."""
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.routes import router as api_router
 from app.core.config import CORS_ORIGINS, MEDICAL_DISCLAIMER, PROJECT_NAME, VERSION
+from app.db.database import init_db
 
 # Configure application logging
 logging.basicConfig(
@@ -14,12 +16,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("earlycare")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    logger.info("EarlyCare SQLite database schema initialized.")
+    yield
+
+
 app = FastAPI(
     title=PROJECT_NAME,
     version=VERSION,
     description="Explainable Multi-Condition Health Risk Screening Platform for Students",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Middleware configuration

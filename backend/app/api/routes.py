@@ -1,9 +1,22 @@
 """FastAPI router endpoints for EarlyCare: /screen, /explain, /export-sbar, /health."""
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
-from fastapi import APIRouter, HTTPException, status
+from typing import Dict, List, Optional, Any
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.core.config import MEDICAL_DISCLAIMER, PROJECT_NAME, VERSION
 from app.core.security import generate_anonymous_screening_id
+from app.core.auth import (
+    create_access_token,
+    parse_google_credential,
+    get_current_user,
+    get_optional_current_user,
+)
+from app.db.database import (
+    get_or_create_user,
+    save_screening_for_user,
+    get_user_screenings,
+    get_screening_by_id,
+    delete_user_screening,
+)
 from app.models.enums import RiskTierEnum
 from app.models.schemas import (
     CalculatedVitals,
@@ -17,6 +30,11 @@ from app.models.schemas import (
     CounterfactualSimulationRequest,
     CounterfactualSimulationResponse,
     SevenDayDietBlueprint,
+    GoogleAuthRequest,
+    UserProfileResponse,
+    AuthResponse,
+    SaveScreeningRequest,
+    SavedScreeningSummary,
 )
 from app.ml.anemia import (
     BETA_0_ANEMIA,
@@ -61,7 +79,10 @@ async def get_health_status() -> HealthStatusResponse:
 
 
 @router.post("/screen", response_model=ScreenResponse, tags=["Screening"])
-async def run_screening(intake: StudentIntakeRequest) -> ScreenResponse:
+async def run_screening(
+    intake: StudentIntakeRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+) -> ScreenResponse:
     """
     Evaluates multi-condition health risk across hematological, metabolic, and micronutrient axes.
     Returns calibrated percentage probabilities, risk tiers, XAI driver badges, radar axes,
@@ -159,7 +180,7 @@ async def run_screening(intake: StudentIntakeRequest) -> ScreenResponse:
     for c in conditions.values():
         all_recs.extend(c.lifestyle_recommendations)
 
-    return ScreenResponse(
+    screen_res = ScreenResponse(
         screening_id=screening_id,
         session_id=screening_id,
         timestamp_utc=timestamp_utc,
@@ -177,6 +198,19 @@ async def run_screening(intake: StudentIntakeRequest) -> ScreenResponse:
         recommendations=all_recs,
         disclaimer=MEDICAL_DISCLAIMER
     )
+
+    if current_user:
+        try:
+            save_screening_for_user(
+                user_id=current_user["id"],
+                screening_id=screening_id,
+                intake_data=intake.model_dump(),
+                result_data=screen_res.model_dump()
+            )
+        except Exception:
+            pass
+
+    return screen_res
 
 
 @router.post("/explain", response_model=ExplainResponse, tags=["Explainability"])
@@ -319,3 +353,133 @@ async def get_campus_diet_blueprint(intake: StudentIntakeRequest) -> SevenDayDie
         p_risk=p_pct,
         d3_risk=micro_details.vitamin_d3_risk_pct
     )
+
+
+# ==============================================================================
+# Authentication & User Profile Endpoints
+# ==============================================================================
+
+@router.post("/auth/google", response_model=AuthResponse, tags=["Authentication"])
+async def authenticate_with_google(req: GoogleAuthRequest) -> AuthResponse:
+    """Authenticates student via Google ID token or campus student profile."""
+    email = None
+    name = req.name
+    picture = req.picture
+    google_id = None
+
+    if req.credential:
+        parsed = parse_google_credential(req.credential)
+        if parsed:
+            email = parsed["email"]
+            name = parsed.get("name") or name
+            picture = parsed.get("picture") or picture
+            google_id = parsed.get("google_id")
+    
+    if not email and req.email:
+        email = req.email.strip().lower()
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid Google credential or student email address required for authentication."
+        )
+
+    user = get_or_create_user(email=email, name=name, picture=picture, google_id=google_id)
+    token = create_access_token(user_id=user["id"], email=user["email"])
+
+    return AuthResponse(
+        access_token=token,
+        token_type="Bearer",
+        user=UserProfileResponse(
+            id=user["id"],
+            email=user["email"],
+            name=user["name"],
+            picture=user["picture"] or "",
+            created_at=user["created_at"],
+            last_login=user["last_login"]
+        )
+    )
+
+
+@router.get("/auth/me", response_model=UserProfileResponse, tags=["Authentication"])
+async def get_current_user_profile(user: Dict[str, Any] = Depends(get_current_user)) -> UserProfileResponse:
+    """Returns the authenticated student's profile."""
+    return UserProfileResponse(
+        id=user["id"],
+        email=user["email"],
+        name=user["name"],
+        picture=user["picture"] or "",
+        created_at=user["created_at"],
+        last_login=user["last_login"]
+    )
+
+
+# ==============================================================================
+# Saved Screenings & Timeline History Endpoints
+# ==============================================================================
+
+@router.post("/results/save", tags=["Screening History"])
+async def save_existing_screening(
+    req: SaveScreeningRequest,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Associates a completed screening report with the logged-in user account."""
+    res = save_screening_for_user(
+        user_id=user["id"],
+        screening_id=req.screening_id,
+        intake_data=req.intake_data,
+        result_data=req.result_data
+    )
+    return {"status": "saved", "screening_id": req.screening_id, "record_id": res["id"]}
+
+
+@router.get("/results/history", response_model=List[SavedScreeningSummary], tags=["Screening History"])
+async def list_user_screening_history(
+    user: Dict[str, Any] = Depends(get_current_user),
+    limit: int = 50
+) -> List[SavedScreeningSummary]:
+    """Returns chronologically ordered health screening summaries for the user."""
+    rows = get_user_screenings(user_id=user["id"], limit=limit)
+    return [
+        SavedScreeningSummary(
+            id=r["id"],
+            screening_id=r["screening_id"],
+            created_at=r["created_at"],
+            overall_risk_tier=r["overall_risk_tier"],
+            highest_risk_condition=r["highest_risk_condition"],
+            anemia_risk_pct=r["anemia_risk_pct"],
+            prediabetes_risk_pct=r["prediabetes_risk_pct"],
+            micronutrients_risk_pct=r["micronutrients_risk_pct"],
+            urgent_consult_flag=bool(r["urgent_consult_flag"])
+        )
+        for r in rows
+    ]
+
+
+@router.get("/results/{screening_id}", tags=["Screening History"])
+async def get_saved_screening_detail(
+    screening_id: str,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Retrieves full original payload and screening result for a past session."""
+    data = get_screening_by_id(user_id=user["id"], screening_id=screening_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Screening record not found")
+    return {
+        "screening_id": data["screening_id"],
+        "created_at": data["created_at"],
+        "intake_data": data["intake_data"],
+        "result_data": data["result_data"],
+    }
+
+
+@router.delete("/results/{screening_id}", tags=["Screening History"])
+async def delete_saved_screening(
+    screening_id: str,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Removes a screening report from user history."""
+    deleted = delete_user_screening(user_id=user["id"], screening_id=screening_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Screening record not found")
+    return {"status": "deleted", "screening_id": screening_id}

@@ -14,6 +14,9 @@ from app.models.schemas import (
     SbarResponse,
     ScreenResponse,
     StudentIntakeRequest,
+    CounterfactualSimulationRequest,
+    CounterfactualSimulationResponse,
+    SevenDayDietBlueprint,
 )
 from app.ml.anemia import (
     BETA_0_ANEMIA,
@@ -31,6 +34,7 @@ from app.ml.micronutrients import (
     evaluate_micronutrients_risk,
 )
 from app.ml.explainability import compute_additive_feature_attribution
+from app.ml.simulation import run_counterfactual_simulation, generate_campus_diet_blueprint
 from app.sbar.generator import generate_sbar_report
 
 router = APIRouter()
@@ -288,3 +292,30 @@ async def export_sbar_report(intake: StudentIntakeRequest) -> SbarResponse:
     )
 
     return SbarResponse(**report.model_dump())
+
+
+@router.post("/simulate", response_model=CounterfactualSimulationResponse, tags=["What-If Counterfactual"])
+async def simulate_lifestyle_impact(req: CounterfactualSimulationRequest) -> CounterfactualSimulationResponse:
+    """
+    Simulates lifestyle counterfactuals (sleep, timing tea away from meals, post-meal walks,
+    sun exposure) and returns absolute risk percentage improvements in real time.
+    """
+    return run_counterfactual_simulation(req)
+
+
+@router.post("/diet-blueprint", response_model=SevenDayDietBlueprint, tags=["Campus Nutrition"])
+async def get_campus_diet_blueprint(intake: StudentIntakeRequest) -> SevenDayDietBlueprint:
+    """
+    Generates a personalized, budget-friendly 7-day campus meal and habit blueprint
+    tailored to the student's detected risk domains and dietary preferences.
+    """
+    _, _, a_pct = evaluate_anemia_risk(intake)
+    _, _, p_pct = evaluate_prediabetes_risk(intake)
+    _, micro_details, _, _ = evaluate_micronutrients_risk(intake)
+
+    return generate_campus_diet_blueprint(
+        intake=intake,
+        a_risk=a_pct,
+        p_risk=p_pct,
+        d3_risk=micro_details.vitamin_d3_risk_pct
+    )
